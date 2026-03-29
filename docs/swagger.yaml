@@ -155,7 +155,7 @@ paths:
       summary: Создание пользователя
       tags:
       - users
-  /admin/users/{user_id}/token/revoke:
+  /admin/users/{user_id}/token/revoke/all:
     post:
       description: Возращает статус в header
       parameters:
@@ -168,6 +168,21 @@ paths:
         "200":
           description: OK
       summary: Отзыв всех токенов пользователя
+      tags:
+      - users
+  /admin/users/token/{token_raw}/revoke:
+    post:
+      description: Возращает статус в header
+      parameters:
+      - description: Токен
+        in: path
+        name: token_raw
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+      summary: Отзыв конкретного токена
       tags:
       - users
   /auth:

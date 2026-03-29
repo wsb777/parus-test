@@ -42,7 +42,8 @@ func InitHttpServer(
 
 	userCreateHandler := handlers.CreateUser(userService)
 	userListHandler := handlers.GetUserList(userService)
-	userRevokeTokensHandler := handlers.RevokeUserTokens(authService)
+	userRevokeTokenAllHandler := handlers.RevokeUserTokenAll(authService)
+	userRevokeTokenHandler := handlers.RevokeUserToken(authService)
 
 	fileUploadHandler := handlers.UploadFile(fileService)
 	fileGetInfoHandler := handlers.GetFileInfo(fileService)
@@ -56,16 +57,6 @@ func InitHttpServer(
 	r.Route("/auth", func(r chi.Router) {
 		r.Post("/", authHandler)
 	})
-
-	// User routes
-	// r.Route("/users", func(r chi.Router) {
-	// 	r.Post("/", userHandler.CreateUser)
-	// })
-
-	// Group routes
-	// r.Route("/groups", func(r chi.Router) {
-	// 	r.Post("/", groupHandler.CreateGroup)
-	// })
 
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.AuthMiddleware(authService))
@@ -82,7 +73,8 @@ func InitHttpServer(
 			r.Use(middleware.AdminMiddleware)
 			r.Get("/users/list", userListHandler)
 			r.Post("/users", userCreateHandler)
-			r.Post("/users/{user_id}/token/revoke", userRevokeTokensHandler)
+			r.Post("/users/{user_id}/token/revoke/all", userRevokeTokenAllHandler)
+			r.Post("/users/token/{token_raw}/revoke", userRevokeTokenHandler)
 
 			r.Get("/groups/list", groupListHandler)
 			r.Post("/groups", groupCreateHandler)

@@ -20,6 +20,7 @@ type AuthService interface {
 	SignIn(ctx context.Context, req dto.AuthRequest) (string, error)
 	CheckToken(ctx context.Context, raw string) (*domain.Token, error)
 	RevokeAll(ctx context.Context, userID string) error
+	RevokeToken(ctx context.Context, raw string) error
 }
 
 type authService struct {
@@ -98,11 +99,23 @@ func (s *authService) RevokeAll(ctx context.Context, userID string) error {
 
 	if err != nil {
 		s.logger.Warn("tokens not found")
-		return err
+		return fmt.Errorf("tokens not found: %w", domain.ErrTokenNotFound)
 	}
 
 	return nil
+}
 
+func (s *authService) RevokeToken(ctx context.Context, raw string) error {
+
+	hash := hashToken(raw)
+	err := s.tokenRepo.Revoke(ctx, hash)
+
+	if err != nil {
+		s.logger.Warn("tokens not found")
+		return domain.ErrTokenNotFound
+	}
+
+	return nil
 }
 
 // Opaque token использую впервые

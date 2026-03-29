@@ -57,14 +57,14 @@ func GetUserList(s service.UserService) http.HandlerFunc {
 	}
 }
 
-// RevokeUserTokens godoc
+// RevokeUserTokenAll godoc
 // @Summary Отзыв всех токенов пользователя
 // @Description Возращает статус в header
 // @Tags users
 // @Param user_id path string true "ID пользователя"
 // @Success 200
-// @Router /admin/users/{user_id}/token/revoke [post]
-func RevokeUserTokens(s service.AuthService) http.HandlerFunc {
+// @Router /admin/users/{user_id}/token/revoke/all [post]
+func RevokeUserTokenAll(s service.AuthService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID := chi.URLParam(r, "user_id")
 		if userID == "" {
@@ -75,6 +75,33 @@ func RevokeUserTokens(s service.AuthService) http.HandlerFunc {
 		ctx := r.Context()
 
 		err := s.RevokeAll(ctx, userID)
+		if err != nil {
+			respondError(w, err)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	}
+}
+
+// RevokeUserToken godoc
+// @Summary Отзыв конкретного токена
+// @Description Возращает статус в header
+// @Tags users
+// @Param token_raw path string true "Токен"
+// @Success 200
+// @Router /admin/users/token/{token_raw}/revoke [post]
+func RevokeUserToken(s service.AuthService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		raw := chi.URLParam(r, "token_raw")
+		if raw == "" {
+			http.Error(w, "token_raw required", http.StatusBadRequest)
+			return
+		}
+
+		ctx := r.Context()
+
+		err := s.RevokeToken(ctx, raw)
 		if err != nil {
 			respondError(w, err)
 			return

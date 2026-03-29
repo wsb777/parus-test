@@ -144,7 +144,30 @@ const docTemplate = `{
                 }
             }
         },
-        "/admin/users/{user_id}/token/revoke": {
+        "/admin/users/token/{token_raw}/revoke": {
+            "post": {
+                "description": "Возращает статус в header",
+                "tags": [
+                    "users"
+                ],
+                "summary": "Отзыв конкретного токена",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Токен",
+                        "name": "token_raw",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            }
+        },
+        "/admin/users/{user_id}/token/revoke/all": {
             "post": {
                 "description": "Возращает статус в header",
                 "tags": [
