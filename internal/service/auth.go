@@ -6,7 +6,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
-	"fmt"
 
 	"parus-test/internal/domain"
 	"parus-test/internal/dto"
@@ -47,18 +46,18 @@ func (s *authService) SignIn(ctx context.Context, req dto.AuthRequest) (string, 
 		} else {
 			s.logger.Error("failed to get user", zap.String("username", req.Username), zap.Error(err))
 		}
-		return "", fmt.Errorf("login or password are incorrect: %w", domain.ErrUnauthorized)
+		return "", domain.ErrUnauthorized
 	}
 
 	if !hasher.CheckPassword(req.Password, user.Password) {
 		s.logger.Warn("invalid password", zap.String("username", req.Username))
-		return "", fmt.Errorf("login or password are incorrect: %w", domain.ErrUnauthorized)
+		return "", domain.ErrUnauthorized
 	}
 
 	raw, hash, err := generateToken()
 	if err != nil {
 		s.logger.Error("failed to generate token", zap.String("username", req.Username), zap.Error(err))
-		return "", fmt.Errorf("internal server error")
+		return "", errors.New("internal server error")
 	}
 
 	tokenDomain := domain.Token{
@@ -71,7 +70,7 @@ func (s *authService) SignIn(ctx context.Context, req dto.AuthRequest) (string, 
 
 	if err = s.tokenRepo.Create(ctx, tokenDomain); err != nil {
 		s.logger.Error("failed to save token", zap.String("username", req.Username), zap.Error(err))
-		return "", fmt.Errorf("internal server error")
+		return "", errors.New("internal server error")
 	}
 
 	return raw, nil
@@ -93,13 +92,13 @@ func (s *authService) RevokeAll(ctx context.Context, userID string) error {
 
 	if err != nil {
 		s.logger.Warn("failed to parse uuid", zap.String("user_id", userID))
-		return fmt.Errorf("internal server error")
+		return errors.New("internal server error")
 	}
 	err = s.tokenRepo.RevokeAll(ctx, id)
 
 	if err != nil {
 		s.logger.Warn("tokens not found")
-		return fmt.Errorf("tokens not found: %w", domain.ErrTokenNotFound)
+		return domain.ErrNotFound
 	}
 
 	return nil
@@ -112,7 +111,7 @@ func (s *authService) RevokeToken(ctx context.Context, raw string) error {
 
 	if err != nil {
 		s.logger.Warn("tokens not found")
-		return domain.ErrTokenNotFound
+		return domain.ErrNotFound
 	}
 
 	return nil

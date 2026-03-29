@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"errors"
-	"fmt"
 	"strings"
 	"time"
 
@@ -36,7 +35,7 @@ func (s *groupService) Create(ctx context.Context, groupDTO dto.GroupRequest) (s
 	s.logger.Info("attempting to create group", zap.String("name", groupDTO.Name))
 
 	if strings.TrimSpace(groupDTO.Name) == "" {
-		return "", fmt.Errorf("group name cannot be empty: %w", domain.ErrInvalidInput)
+		return "", domain.ErrInvalidInput
 	}
 
 	group := &domain.Group{Name: groupDTO.Name}
@@ -45,10 +44,10 @@ func (s *groupService) Create(ctx context.Context, groupDTO dto.GroupRequest) (s
 	if err != nil {
 		if errors.Is(err, domain.ErrAlreadyExists) {
 			s.logger.Warn("group already exists", zap.String("name", groupDTO.Name))
-			return "", err
+			return "", domain.ErrAlreadyExists
 		}
 		s.logger.Error("failed to create group", zap.String("name", groupDTO.Name), zap.Error(err))
-		return "", fmt.Errorf("internal server error")
+		return "", errors.New("internal server error")
 	}
 
 	return id.String(), nil
@@ -67,10 +66,10 @@ func (s *groupService) CreateAdminGroup() (uuid.UUID, error) {
 	if err != nil {
 		if errors.Is(err, domain.ErrAlreadyExists) {
 			s.logger.Warn("admin group already exists")
-			return uuid.Nil, err
+			return uuid.Nil, domain.ErrAlreadyExists
 		}
 		s.logger.Error("failed to create admin group", zap.Error(err))
-		return uuid.Nil, fmt.Errorf("internal server error")
+		return uuid.Nil, errors.New("internal server error")
 	}
 
 	return id, nil
@@ -83,7 +82,7 @@ func (s *groupService) GetGroupList(ctx context.Context) ([]dto.GroupResponse, e
 
 	if err != nil {
 		s.logger.Error("failed to list groups", zap.Error(err))
-		return nil, fmt.Errorf("internal server error")
+		return nil, errors.New("internal server error")
 	}
 
 	groups := make([]dto.GroupResponse, 0, len(groupModels))

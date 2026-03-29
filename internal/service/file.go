@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"parus-test/internal/domain"
 	"parus-test/internal/dto"
@@ -39,7 +40,7 @@ func (s *fileService) UploadNewVersion(ctx context.Context, file dto.FileUploadR
 	groupUUID, err := uuid.Parse(file.GroupID)
 	if err != nil {
 		s.logger.Warn("invalid group id", zap.String("group_id", file.GroupID))
-		return nil, fmt.Errorf("invalid group_id: %w", domain.ErrInvalidInput)
+		return nil, domain.ErrInvalidInput
 	}
 
 	var currentVersion domain.SemVer
@@ -50,21 +51,21 @@ func (s *fileService) UploadNewVersion(ctx context.Context, file dto.FileUploadR
 
 		if err := s.repo.CreateEntry(ctx, newID, groupUUID, file.Name, int64(len(file.Content))); err != nil {
 			s.logger.Error("failed to create file entry", zap.String("file_id", file.ID), zap.Error(err))
-			return nil, fmt.Errorf("create entry: %w", err)
+			return nil, errors.New("internal server error")
 		}
 	} else {
 		id, err := uuid.Parse(file.ID)
 
 		if err != nil {
 			s.logger.Warn("invalid file id", zap.String("file_id", file.ID))
-			return nil, fmt.Errorf("invalid file_id: %w", domain.ErrInvalidInput)
+			return nil, domain.ErrInvalidInput
 		}
 
 		entry, err := s.repo.FindEntry(ctx, id)
 
 		if err != nil {
 			s.logger.Error("failed to find file entry", zap.String("file_id", file.ID), zap.Error(err))
-			return nil, fmt.Errorf("find entry: %w", err)
+			return nil, domain.ErrNotFound
 		}
 
 		if entry.GroupID != file.GroupID {
@@ -73,7 +74,7 @@ func (s *fileService) UploadNewVersion(ctx context.Context, file dto.FileUploadR
 				zap.String("file_group", entry.GroupID),
 				zap.String("caller_group", file.GroupID),
 			)
-			return nil, fmt.Errorf("access denied: %w", domain.ErrForbidden)
+			return nil, domain.ErrForbidden
 		}
 
 		currentVersion = entry.CurrentVersion
@@ -84,25 +85,25 @@ func (s *fileService) UploadNewVersion(ctx context.Context, file dto.FileUploadR
 
 	if err := s.storage.Save(ctx, ver.StoragePath, file.Content); err != nil {
 		s.logger.Error("failed to save file to storage", zap.String("file_id", file.ID), zap.Error(err))
-		return nil, fmt.Errorf("storage save: %w", err)
+		return nil, errors.New("internal server error")
 	}
 
 	if err := s.repo.SaveVersion(ctx, ver); err != nil {
 		s.storage.Delete(ctx, ver.StoragePath)
 		s.logger.Error("failed to save file version", zap.String("file_id", file.ID), zap.Error(err))
-		return nil, fmt.Errorf("save version: %w", err)
+		return nil, errors.New("internal server error")
 	}
 
 	fileID, err := uuid.Parse(ver.FileID)
 
 	if err != nil {
 		s.logger.Error("failed to parse file_id", zap.String("file_id", ver.FileID), zap.Error(err))
-		return nil, fmt.Errorf("parse file_id: %w", err)
+		return nil, errors.New("internal server error")
 	}
 
 	if err := s.repo.SetCurrentVersion(ctx, fileID, ver.Version); err != nil {
 		s.logger.Error("failed to set current version", zap.String("file_id", file.ID), zap.Error(err))
-		return nil, fmt.Errorf("set current version: %w", err)
+		return nil, errors.New("internal server error")
 	}
 
 	return &dto.FileVersionResponse{
@@ -121,7 +122,7 @@ func (s *fileService) GetFileInfo(ctx context.Context, file dto.FileInfoRequest)
 
 	if err != nil {
 		s.logger.Warn("invalid file id", zap.String("file_id", file.FileID))
-		return nil, fmt.Errorf("invalid file_id: %w", domain.ErrInvalidInput)
+		return nil, domain.ErrInvalidInput
 	}
 
 	entry, err := s.repo.FindEntry(ctx, fileID)
@@ -137,13 +138,13 @@ func (s *fileService) GetFileInfo(ctx context.Context, file dto.FileInfoRequest)
 			zap.String("file_group", entry.GroupID),
 			zap.String("caller_group", file.GroupID),
 		)
-		return nil, fmt.Errorf("access denied: %w", domain.ErrForbidden)
+		return nil, domain.ErrForbidden
 	}
 
 	listVersions, err := s.repo.ListVersions(ctx, fileID, uuid.Nil)
 	if err != nil {
 		s.logger.Error("failed to list file versions", zap.String("file_id", file.FileID), zap.Error(err))
-		return nil, fmt.Errorf("internal server error")
+		return nil, errors.New("internal server error")
 	}
 
 	versions := make([]string, 0, len(listVersions))
@@ -164,7 +165,7 @@ func (s *fileService) GetFileLatestVersionInfo(ctx context.Context, file dto.Fil
 
 	if err != nil {
 		s.logger.Warn("invalid file id", zap.String("file_id", file.FileID))
-		return nil, fmt.Errorf("invalid file_id: %w", domain.ErrInvalidInput)
+		return nil, domain.ErrInvalidInput
 	}
 
 	entry, err := s.repo.FindEntry(ctx, fileID)
@@ -180,7 +181,7 @@ func (s *fileService) GetFileLatestVersionInfo(ctx context.Context, file dto.Fil
 			zap.String("file_group", entry.GroupID),
 			zap.String("caller_group", file.GroupID),
 		)
-		return nil, fmt.Errorf("access denied: %w", domain.ErrForbidden)
+		return nil, domain.ErrForbidden
 	}
 
 	return &dto.FileVersionResponse{
@@ -197,20 +198,20 @@ func (s *fileService) GetFileDataByVersion(ctx context.Context, file dto.FileDat
 	fileID, err := uuid.Parse(file.FileID)
 	if err != nil {
 		s.logger.Warn("invalid file id", zap.String("file_id", file.FileID))
-		return nil, fmt.Errorf("invalid file_id: %w", domain.ErrInvalidInput)
+		return nil, domain.ErrInvalidInput
 	}
 
 	semver, err := domain.ParseSemVer(file.FileVersion)
 	if err != nil {
 		s.logger.Warn("invalid  id", zap.String("file_version", file.FileVersion))
-		return nil, fmt.Errorf("invalid file_id: %w", domain.ErrInvalidInput)
+		return nil, domain.ErrInvalidInput
 	}
 
 	entry, err := s.repo.FindEntry(ctx, fileID)
 
 	if err != nil {
 		s.logger.Error("failed to find file entry", zap.String("file_id", file.FileID), zap.Error(err))
-		return nil, fmt.Errorf("find entry: %w", err)
+		return nil, domain.ErrNotFound
 	}
 
 	if entry.GroupID != file.GroupID {
@@ -219,20 +220,20 @@ func (s *fileService) GetFileDataByVersion(ctx context.Context, file dto.FileDat
 			zap.String("file_group", entry.GroupID),
 			zap.String("caller_group", file.GroupID),
 		)
-		return nil, fmt.Errorf("access denied: %w", domain.ErrForbidden)
+		return nil, domain.ErrForbidden
 	}
 
 	ver, err := s.repo.FindVersion(ctx, fileID, semver)
 	if err != nil {
 		s.logger.Error("failed to find file version", zap.String("file_id", file.FileID), zap.String("file_version", file.FileVersion), zap.Error(err))
-		return nil, fmt.Errorf("find file version: %w", err)
+		return nil, domain.ErrNotFound
 	}
 
 	reader, err := s.storage.Read(ctx, ver.StoragePath)
 
 	if err != nil {
 		s.logger.Error("failed to find file version", zap.String("file_id", file.FileID), zap.String("file_version", file.FileVersion), zap.Error(err))
-		return nil, fmt.Errorf("file reader: %w", err)
+		return nil, errors.New("internal server error")
 	}
 
 	contentType := mime.ExtToMime(filepath.Ext(ver.StoragePath))

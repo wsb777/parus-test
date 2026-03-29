@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"errors"
-	"fmt"
 	"strings"
 	"time"
 
@@ -37,22 +36,22 @@ func (s *userService) CreateUser(ctx context.Context, req dto.UserRequest) error
 	s.logger.Info("attempting to create user", zap.String("username", req.Username))
 
 	if strings.TrimSpace(req.Username) == "" {
-		return fmt.Errorf("username cannot be empty: %w", domain.ErrInvalidInput)
+		return domain.ErrInvalidInput
 	}
 	if strings.TrimSpace(req.Password) == "" {
-		return fmt.Errorf("password cannot be empty: %w", domain.ErrInvalidInput)
+		return domain.ErrInvalidInput
 	}
 
 	groupID, err := uuid.Parse(req.Group)
 	if err != nil {
 		s.logger.Warn("invalid group id", zap.String("group_id", req.Group))
-		return fmt.Errorf("invalid group id: %w", domain.ErrInvalidInput)
+		return domain.ErrInvalidInput
 	}
 
 	hash, err := hasher.HashPassword(req.Password)
 	if err != nil {
 		s.logger.Error("failed to hash password", zap.String("username", req.Username), zap.Error(err))
-		return fmt.Errorf("internal server error")
+		return errors.New("internal server error")
 	}
 
 	user := domain.User{
@@ -65,10 +64,10 @@ func (s *userService) CreateUser(ctx context.Context, req dto.UserRequest) error
 	if err = s.repo.Create(ctx, user); err != nil {
 		if errors.Is(err, domain.ErrAlreadyExists) {
 			s.logger.Warn("user already exists", zap.String("username", req.Username))
-			return err
+			return domain.ErrAlreadyExists
 		}
 		s.logger.Error("failed to create user", zap.String("username", req.Username), zap.Error(err))
-		return fmt.Errorf("internal server error")
+		return errors.New("internal server error")
 	}
 	return nil
 }
@@ -83,7 +82,7 @@ func (s *userService) CreateAdmin(username string, password string, groupID uuid
 	hash, err := hasher.HashPassword(password)
 	if err != nil {
 		s.logger.Error("failed to hash password", zap.String("username", username), zap.Error(err))
-		return fmt.Errorf("internal server error")
+		return errors.New("internal server error")
 	}
 
 	user := domain.User{
@@ -101,7 +100,7 @@ func (s *userService) CreateAdmin(username string, password string, groupID uuid
 		}
 
 		s.logger.Error("failed to create admin", zap.String("username", username), zap.Error(err))
-		return fmt.Errorf("internal server error")
+		return errors.New("internal server error")
 	}
 	return nil
 }
@@ -111,7 +110,7 @@ func (s *userService) GetUserList(ctx context.Context) ([]dto.UserListItemRespon
 
 	if err != nil {
 		s.logger.Error("failed to list users", zap.Error(err))
-		return nil, fmt.Errorf("internal server error")
+		return nil, errors.New("internal server error")
 	}
 
 	users := make([]dto.UserListItemResponse, 0, len(userModels))
