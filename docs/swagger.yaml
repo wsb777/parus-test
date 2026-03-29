@@ -1,0 +1,255 @@
+definitions:
+  dto.AuthRequest:
+    properties:
+      password:
+        type: string
+      username:
+        type: string
+    type: object
+  dto.FileVersionResponse:
+    properties:
+      checksum:
+        type: string
+      created_at:
+        type: string
+      file_id:
+        type: string
+      size:
+        type: integer
+      url:
+        type: string
+      version:
+        type: string
+    type: object
+  dto.GroupRequest:
+    properties:
+      name:
+        type: string
+    type: object
+  dto.GroupResponse:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  dto.UserListItemResponse:
+    properties:
+      group_id:
+        type: string
+      group_name:
+        type: string
+      id:
+        type: string
+      role:
+        type: string
+      username:
+        type: string
+    type: object
+  dto.UserRequest:
+    properties:
+      group:
+        type: string
+      id:
+        type: string
+      password:
+        type: string
+      role:
+        type: string
+      username:
+        type: string
+    type: object
+  handlers.TokenResponse:
+    properties:
+      token:
+        type: string
+    type: object
+info:
+  contact: {}
+  description: Сервис для публикации и проверки обновлений, с учетом проверки целостности
+    файлов через хеш-суммы
+  title: Parus Test
+  version: "1.0"
+paths:
+  /admin/files/{file_id}:
+    post:
+      description: Возвращает информацию о загруженном файле
+      parameters:
+      - description: ID файла
+        in: path
+        name: file_id
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.FileVersionResponse'
+      summary: Загрузка файла
+      tags:
+      - file
+  /admin/groups:
+    get:
+      description: Возвращает список групп
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/dto.GroupResponse'
+            type: array
+      summary: Получение списка групп
+      tags:
+      - group
+    post:
+      description: Возвращает id группы
+      parameters:
+      - description: Наименование
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.GroupRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/dto.GroupResponse'
+      summary: Создание группы
+      tags:
+      - group
+  /admin/users:
+    get:
+      description: Возвращает список пользователей с их группами
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/dto.UserListItemResponse'
+            type: array
+      summary: Получение списка пользователей
+      tags:
+      - users
+    post:
+      description: Возращает статус в header
+      parameters:
+      - description: Логин, пароль и группа
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UserRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+      summary: Создание пользователя
+      tags:
+      - users
+  /admin/users/{user_id}/token/revoke:
+    post:
+      description: Возращает статус в header
+      parameters:
+      - description: ID пользователя
+        in: path
+        name: user_id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+      summary: Отзыв всех токенов пользователя
+      tags:
+      - users
+  /auth:
+    post:
+      description: Возвращает токен
+      parameters:
+      - description: Логин и пароль
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.AuthRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.TokenResponse'
+      summary: Авторизация
+      tags:
+      - auth
+  /files/{file_id}/version/{file_version}/download:
+    get:
+      description: Возращает файл и хеш в header Digest
+      parameters:
+      - description: ID файла
+        in: path
+        name: file_id
+        required: true
+        type: string
+      - description: Версия файла
+        in: path
+        name: file_version
+        required: true
+        type: string
+      produces:
+      - application/octet-stream
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+      summary: Получение файла
+      tags:
+      - file
+  /files/{file_id}/version/latest:
+    get:
+      description: Возвращает информацию о последней версии
+      parameters:
+      - description: ID файла
+        in: path
+        name: file_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.FileVersionResponse'
+      summary: Получение информации о файле последнего обновления
+      tags:
+      - file
+  /files/{file_id}/version/list:
+    get:
+      description: Возвращает информацию о версиях файла
+      parameters:
+      - description: ID файла
+        in: path
+        name: file_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.FileVersionResponse'
+      summary: Получение информации о версиях файла
+      tags:
+      - file
+swagger: "2.0"

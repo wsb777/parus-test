@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "443:${PORT}"
+    environment:
+      - PORT=${PORT}
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=parus
+      - DB_USER=parus
+      - DB_PASSWORD=parus
+      - JWT_SECRET=${JWT_SECRET}
+      - ADMIN_NAME=${ADMIN_NAME}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - TLS_CERT=/etc/ssl/app/self.crt
+      - TLS_KEY=/etc/ssl/app/self.key
+
+    volumes:
+      - "./uploads:/uploads"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:17-alpine
+    environment:
+      - POSTGRES_DB=parus
+      - POSTGRES_USER=parus
+      - POSTGRES_PASSWORD=parus
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U parus -d parus"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
