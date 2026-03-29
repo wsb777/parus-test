@@ -34,7 +34,7 @@ func NewDatabasePG(cfg *config.Config, logger *zap.Logger) *DatabasePG {
 }
 
 func (d *DatabasePG) Connect() (*gorm.DB, error) {
-	d.logger.Info("connecting to database", zap.String("host", d.DBHost), zap.String("db", d.DBName))
+	d.logger.Info("connecting to database", zap.String("host", d.DBHost), zap.String("db_name", d.DBName))
 
 	dsn := "host=%s user=%s password=%s dbname=%s port=%s sslmode=disable TimeZone=UTC"
 	dsn = fmt.Sprintf(dsn, d.DBHost, d.DBUsername, d.DBPassword, d.DBName, d.DBPort)
