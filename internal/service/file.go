@@ -245,7 +245,7 @@ func (s *fileService) GetFileDataByVersion(ctx context.Context, file dto.FileDat
 		Hash:        ver.Checksum,
 		ContentType: contentType,
 		Reader:      reader,
-		FileName:    entry.Name + "-v" + semver.String(),
+		FileName:    entry.Name,
 		Size:        ver.Size,
 	}, nil
 }
