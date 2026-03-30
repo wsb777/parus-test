@@ -88,17 +88,18 @@ func (r *fileRepo) FindVersion(ctx context.Context, fileID uuid.UUID, semver dom
 func (r *fileRepo) ListVersions(ctx context.Context, fileID uuid.UUID, groupID uuid.UUID) ([]*domain.FileVersion, error) {
 	var models []models.FileVersion
 
-	q := r.db.WithContext(ctx).Preload("FileEntry").
-		Where("file_id = ?", fileID).
-		Order("created_at ASC")
+	result := r.db.WithContext(ctx).Preload("FileEntry").Where("file_id = ?", fileID).Order("created_at ASC").Find(&models)
 
-	if groupID != uuid.Nil {
-		q = q.Joins("JOIN file_entries ON file_entries.id = file_versions.file_id").
-			Where("file_entries.group_id = ?", groupID)
+	if result.Error != nil {
+		return nil, fmt.Errorf("db error: %w", mapDBError(result.Error))
 	}
 
-	if err := q.Find(&models).Error; err != nil {
-		return nil, fmt.Errorf("list file versions: %w", err)
+	if len(models) == 0 {
+		return nil, fmt.Errorf("file not found: %w", domain.ErrNotFound)
+	}
+
+	if models[0].FileEntry.GroupID != groupID {
+		return nil, domain.ErrForbidden
 	}
 
 	versions := make([]*domain.FileVersion, len(models))
@@ -115,10 +116,10 @@ func (r *fileRepo) SetCurrentVersion(ctx context.Context, fileID uuid.UUID, semv
 		Where("id = ?", fileID).
 		Update("current_version", semver.String())
 	if result.Error != nil {
-		return fmt.Errorf("set current version: %w", result.Error)
+		return fmt.Errorf("set current version: %w", mapDBError(result.Error))
 	}
 	if result.RowsAffected == 0 {
-		return fmt.Errorf("file entry %s: %w", fileID, domain.ErrNotFound)
+		return fmt.Errorf("file entry %s: %w", fileID, mapDBError(result.Error))
 	}
 	return nil
 }

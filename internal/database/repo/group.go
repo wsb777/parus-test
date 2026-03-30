@@ -39,7 +39,7 @@ func (r *groupRepo) GetGroupList(ctx context.Context) ([]domain.Group, error) {
 	var groups []models.Group
 
 	if err := r.db.WithContext(ctx).Find(&groups).Error; err != nil {
-		return nil, err
+		return nil, fmt.Errorf("groups: %w", mapDBError(err))
 	}
 
 	var domainGroups []domain.Group
